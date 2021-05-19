@@ -10,12 +10,12 @@ void I2CSSD1306::setup() {
   ESP_LOGCONFIG(TAG, "Setting up I2C SSD1306...");
   this->init_reset_();
 
-  this->parent_->raw_begin_transmission(this->address_);
-  if (!this->parent_->raw_end_transmission(this->address_)) {
-    this->error_code_ = COMMUNICATION_FAILED;
-    this->mark_failed();
-    return;
-  }
+  //this->parent_->raw_begin_transmission(this->address_);
+  //if (!this->parent_->raw_end_transmission(this->address_)) {
+  //  this->error_code_ = COMMUNICATION_FAILED;
+  //  this->mark_failed();
+  //  return;
+  //}
 
   SSD1306::setup();
 }
