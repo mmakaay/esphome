@@ -209,12 +209,18 @@ void LightState::current_values_as_ct(float *color_temperature, float *white_bri
                              this->gamma_correct_);
 }
 
-void LightState::stop_active_() {
-  this->stop_effect_();
-  if (this->active_transition_number_ != 0)
-    this->transitions_[this->active_transition_number_ - 1]->abort();
-  this->active_transition_number_ = 0;
-  this->cancel_timeout("flash");
+void LightState::stop_active_(int operations) {
+  if ((operations & LIGHT_OP_EFFECT) == LIGHT_OP_EFFECT) {
+    this->stop_effect_();
+  }
+  if ((operations & LIGHT_OP_TRANSITION) == LIGHT_OP_TRANSITION) {
+    if (this->active_transition_number_ != 0)
+      this->transitions_[this->active_transition_number_ - 1]->abort();
+    this->active_transition_number_ = 0;
+  }
+  if ((operations & LIGHT_OP_FLASH) == LIGHT_OP_FLASH) {
+    this->cancel_timeout("flash");
+  }
 }
 
 void LightState::start_effect_(uint32_t effect_index) {
@@ -227,10 +233,11 @@ void LightState::start_effect_(uint32_t effect_index) {
   effect->start_internal();
 }
 LightEffect *LightState::get_active_effect_() {
-  if (this->active_effect_index_ == 0)
+  if (this->active_effect_index_ == 0) {
     return nullptr;
-  else
+  } else {
     return this->effects_[this->active_effect_index_ - 1];
+  }
 }
 void LightState::stop_effect_() {
   auto *effect = this->get_active_effect_();
@@ -241,15 +248,12 @@ void LightState::stop_effect_() {
 }
 
 void LightState::start_transition_(const LightColorValues &target, uint32_t transition_number, uint32_t length) {
-  this->stop_active_();
   this->active_transition_number_ = transition_number;
   this->transitions_[transition_number - 1]->setup(this, this->current_values, target, length);
   this->remote_values = target;
 }
 
 void LightState::start_flash_(const LightColorValues &target, uint32_t length) {
-  this->stop_active_();
-
   // XXX this breaks if starting a flash while one is already happening
   LightColorValues end_colors = this->remote_values;
 
@@ -268,7 +272,6 @@ void LightState::start_flash_(const LightColorValues &target, uint32_t length) {
 }
 
 void LightState::set_immediately_(const LightColorValues &target, bool set_remote_values) {
-  this->stop_active_();
   this->current_values = target;
   if (set_remote_values) {
     this->remote_values = target;

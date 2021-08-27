@@ -23,6 +23,10 @@ enum LightRestoreMode {
   LIGHT_RESTORE_INVERTED_DEFAULT_ON,
 };
 
+static const int LIGHT_OP_TRANSITION{1};
+static const int LIGHT_OP_FLASH{2}; 
+static const int LIGHT_OP_EFFECT{4};
+
 /** This class represents the communication layer between the front-end MQTT layer and the
  * hardware output layer.
  */
@@ -147,7 +151,7 @@ class LightState : public Nameable, public Component {
   uint32_t hash_base() override;
 
   /// Internal method to stop any active transitions, flashes and effects.
-  void stop_active_();
+  void stop_active_(int operations);
 
   /// Internal method to start an effect with the given index
   void start_effect_(uint32_t effect_index);

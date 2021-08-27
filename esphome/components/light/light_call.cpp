@@ -80,6 +80,7 @@ void LightCall::perform() {
       ESP_LOGD(TAG, "  Flash length: %.1fs", *this->flash_length_ / 1e3f);
     }
 
+    this->parent_->stop_active_(LIGHT_OP_TRANSITION | LIGHT_OP_FLASH | LIGHT_OP_EFFECT);
     this->parent_->start_flash_(v, *this->flash_length_);
   } else if (this->has_transition_()) {
     // TRANSITION
@@ -89,7 +90,7 @@ void LightCall::perform() {
                *this->transition_length_ / 1e3f);
     }
 
-    // Special case: Transition and effect can be set when turning off
+    // Special case: Transition and effect can both be set when turning off
     if (this->has_effect_()) {
       if (this->publish_) {
         ESP_LOGD(TAG, "  Effect: 'None'");
@@ -97,6 +98,7 @@ void LightCall::perform() {
       this->parent_->stop_effect_();
     }
 
+    this->parent_->stop_active_(LIGHT_OP_TRANSITION | LIGHT_OP_FLASH);
     this->parent_->start_transition_(v, *this->transition_, *this->transition_length_);
 
   } else if (this->has_effect_()) {
@@ -112,6 +114,7 @@ void LightCall::perform() {
       ESP_LOGD(TAG, "  Effect: '%s'", effect_s);
     }
 
+    this->parent_->stop_active_(LIGHT_OP_TRANSITION | LIGHT_OP_FLASH | LIGHT_OP_EFFECT);
     this->parent_->start_effect_(*this->effect_);
 
     // Also set light color values when starting an effect
@@ -119,6 +122,7 @@ void LightCall::perform() {
     this->parent_->set_immediately_(v, true);
   } else {
     // INSTANT CHANGE
+    this->parent_->stop_active_(LIGHT_OP_TRANSITION | LIGHT_OP_FLASH | LIGHT_OP_EFFECT);
     this->parent_->set_immediately_(v, this->publish_);
   }
 
