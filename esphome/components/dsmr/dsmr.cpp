@@ -22,7 +22,7 @@ void Dsmr::receive_telegram_() {
     const char c = read();
 
     if (c == '/') {  // header: forward slash
-      ESP_LOGV(TAG, "Header found");
+      ESP_LOGV(TAG, "Header found with Maurice's code v2");
       header_found_ = true;
       footer_found_ = false;
       telegram_len_ = 0;
