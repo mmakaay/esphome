@@ -128,7 +128,7 @@ void Dsmr::receive_encrypted_() {
 
 bool Dsmr::parse_telegram() {
   MyData data;
-  ESP_LOGV(TAG, "Trying to parse");
+  ESP_LOGV(TAG, "Trying to parse telegram, length = %d bytes", telegram_len_);
   ::dsmr::ParseResult<void> res =
       ::dsmr::P1Parser::parse(&data, telegram_, telegram_len_,
                               false);  // Parse telegram according to data definition. Ignore unknown values.
