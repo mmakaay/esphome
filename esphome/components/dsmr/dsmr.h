@@ -70,6 +70,8 @@ class Dsmr : public Component, public uart::UARTDevice {
 
   void set_decryption_key(const std::string &decryption_key);
 
+  void set_debug_mode(bool debug_mode);
+
 // Sensor setters
 #define DSMR_SET_SENSOR(s) \
   void set_##s(sensor::Sensor *sensor) { s_##s##_ = sensor; }
@@ -99,6 +101,8 @@ class Dsmr : public Component, public uart::UARTDevice {
   DSMR_TEXT_SENSOR_LIST(DSMR_DECLARE_TEXT_SENSOR, )
 
   std::vector<uint8_t> decryption_key_{};
+
+  bool debug_mode_{false};
 };
 }  // namespace dsmr
 }  // namespace esphome

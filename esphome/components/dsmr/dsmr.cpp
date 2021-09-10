@@ -21,8 +21,29 @@ void Dsmr::receive_telegram_() {
   while (available()) {
     const char c = read();
 
+    if (debug_mode_) {
+      if (c == '\r') {
+          return;
+      }
+      if (c == '\n') {
+        telegram_[telegram_len_+1] = 0;
+        ESP_LOGV(TAG, "Line: [%s]", telegram_);
+        telegram_len_ = 0;
+        return;
+      }
+
+      telegram_[telegram_len_++] = c;
+
+      if (telegram_len_ >= MAX_TELEGRAM_LENGTH) {
+        ESP_LOGV(TAG, "Partial line: [%s]", telegram_);
+        telegram_len_ = 0;
+      }
+
+      return;
+    }
+
     if (c == '/') {  // header: forward slash
-      ESP_LOGV(TAG, "Header found with Maurice's code v2");
+      ESP_LOGV(TAG, "Header found with Maurice's code v3");
       header_found_ = true;
       footer_found_ = false;
       telegram_len_ = 0;
@@ -176,6 +197,16 @@ void Dsmr::set_decryption_key(const std::string &decryption_key) {
     strncpy(temp, &(decryption_key.c_str()[i * 2]), 2);
     decryption_key_.push_back(std::strtoul(temp, nullptr, 16));
   }
+}
+
+void Dsmr::set_debug_mode(bool debug_mode) {
+  if (debug_mode) {
+    ESP_LOGI(TAG, "Enabling debug mode");
+  } else {
+    ESP_LOGI(TAG, "Disabling debug mode");
+  }
+
+  debug_mode_ = debug_mode;
 }
 
 }  // namespace dsmr
