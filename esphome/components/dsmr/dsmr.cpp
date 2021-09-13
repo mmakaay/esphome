@@ -21,7 +21,7 @@ void Dsmr::receive_telegram_() {
   while (available()) {
     const char c = read();
 
-#ifdef USE_TELEGRAM_DEBUGGER
+#ifdef USE_DSMR_TELEGRAM_DEBUGGER
     if (c == '\r') {
       debug_[debug_len_++] = '\\';
       debug_[debug_len_++] = 'r';
