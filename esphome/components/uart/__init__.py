@@ -13,15 +13,29 @@ from esphome.const import (
     CONF_DATA,
     CONF_RX_BUFFER_SIZE,
     CONF_INVERT,
+    CONF_TRIGGER_ID,
 )
 from esphome.core import CORE
 
 CODEOWNERS = ["@esphome/core"]
+
+CONF_ON_TRANSMIT = "on_transmit"
+CONF_ON_RECEIVE = "on_receive"
+CONF_AFTER_BYTES = "after_bytes"
+CONF_AFTER_TIMEOUT = "after_timeout"
+CONF_AFTER_NEWLINE = "after_newline"
+CONF_BEFORE_TRANSMIT = "before_transmit"
+CONF_BEFORE_RECEIVE = "before_receive"
+
 uart_ns = cg.esphome_ns.namespace("uart")
 UARTComponent = uart_ns.class_("UARTComponent", cg.Component)
 UARTDevice = uart_ns.class_("UARTDevice")
 UARTWriteAction = uart_ns.class_("UARTWriteAction", automation.Action)
+UARTReceiveTrigger = uart_ns.class_("UARTReceiveTrigger", automation.Action)
+UARTTransmitTrigger = uart_ns.class_("UARTTransmitTrigger", automation.Action)
 MULTI_CONF = True
+
+UARTDirection = uart_ns.enum("UARTDirection")
 
 
 def validate_raw_data(value):
@@ -52,6 +66,14 @@ CONF_STOP_BITS = "stop_bits"
 CONF_DATA_BITS = "data_bits"
 CONF_PARITY = "parity"
 
+DEBUGGER_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_AFTER_BYTES, default=1024): cv.validate_bytes,
+        cv.Optional(CONF_AFTER_TIMEOUT): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_AFTER_NEWLINE, default=True): cv.boolean,
+    }
+)
+
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -68,10 +90,48 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_PARITY, default="NONE"): cv.enum(
                 UART_PARITY_OPTIONS, upper=True
             ),
+            cv.Optional(CONF_ON_RECEIVE): automation.validate_automation(
+                DEBUGGER_SCHEMA.extend(
+                    {
+                        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
+                            UARTReceiveTrigger
+                        ),
+                        cv.Optional(CONF_BEFORE_TRANSMIT, default=False): cv.boolean,
+                    }
+                )
+            ),
+            cv.Optional(CONF_ON_TRANSMIT): automation.validate_automation(
+                DEBUGGER_SCHEMA.extend(
+                    {
+                        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
+                            UARTTransmitTrigger
+                        ),
+                        cv.Optional(CONF_BEFORE_RECEIVE, default=False): cv.boolean,
+                    }
+                )
+            ),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.has_at_least_one_key(CONF_TX_PIN, CONF_RX_PIN),
 )
+
+
+async def data_trigger_to_code(conf, var, direction):
+    trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+    await automation.build_automation(
+        trigger,
+        [(UARTDirection, "direction"), (cg.std_vector.template(cg.uint8), "byte")],
+        conf,
+    )
+    cg.add(trigger.set_after_bytes(conf[CONF_AFTER_BYTES]))
+    cg.add(trigger.set_after_newline(conf[CONF_AFTER_NEWLINE]))
+    if CONF_AFTER_TIMEOUT in conf:
+        cg.add(trigger.set_after_timeout(conf[CONF_AFTER_TIMEOUT]))
+    if CONF_BEFORE_RECEIVE in conf:
+        cg.add(trigger.set_before_receive(conf[CONF_BEFORE_RECEIVE]))
+    if CONF_BEFORE_TRANSMIT in conf:
+        cg.add(trigger.set_before_transmit(conf[CONF_BEFORE_TRANSMIT]))
+    cg.add_define("USE_UART_DATA_TRIGGER")
 
 
 async def to_code(config):
@@ -91,6 +151,11 @@ async def to_code(config):
     cg.add(var.set_stop_bits(config[CONF_STOP_BITS]))
     cg.add(var.set_data_bits(config[CONF_DATA_BITS]))
     cg.add(var.set_parity(config[CONF_PARITY]))
+
+    for conf in config.get(CONF_ON_RECEIVE, []):
+        await data_trigger_to_code(conf, var, UARTDirection.UART_RECEIVE)
+    for conf in config.get(CONF_ON_TRANSMIT, []):
+        await data_trigger_to_code(conf, var, UARTDirection.UART_TRANSMIT)
 
 
 # A schema to use for all UART devices, all UART integrations must extend this!

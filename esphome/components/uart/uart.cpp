@@ -17,12 +17,14 @@ size_t UARTComponent::write(uint8_t data) {
   this->write_byte(data);
   return 1;
 }
+
 int UARTComponent::read() {
   uint8_t data;
   if (!this->read_byte(&data))
     return -1;
   return data;
 }
+
 int UARTComponent::peek() {
   uint8_t data;
   if (!this->peek_byte(&data))
@@ -75,6 +77,12 @@ const LogString *parity_to_str(UARTParityOptions parity) {
       return LOG_STR("UNKNOWN");
   }
 }
+
+#ifdef USE_UART_DATA_TRIGGER
+void UARTComponent::add_data_callback(std::function<void(UARTDirection, uint8_t)> &&callback) {
+  this->data_callback_.add(std::move(callback));    
+}
+#endif
 
 }  // namespace uart
 }  // namespace esphome

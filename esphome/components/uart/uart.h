@@ -2,8 +2,10 @@
 
 #include <vector>
 #include <HardwareSerial.h>
+#include "esphome/core/defines.h"
 #include "esphome/core/esphal.h"
 #include "esphome/core/component.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -14,6 +16,13 @@ enum UARTParityOptions {
   UART_CONFIG_PARITY_EVEN,
   UART_CONFIG_PARITY_ODD,
 };
+
+#ifdef USE_UART_DATA_TRIGGER
+enum UARTDirection {
+    UART_RECEIVE,
+    UART_TRANSMIT
+}
+#endif
 
 const LogString *parity_to_str(UARTParityOptions parity);
 
@@ -100,6 +109,10 @@ class UARTComponent : public Component, public Stream {
   void set_data_bits(uint8_t data_bits) { this->data_bits_ = data_bits; }
   void set_parity(UARTParityOptions parity) { this->parity_ = parity; }
 
+#ifdef USE_UART_DATA_TRIGGER
+  void add_data_callback(std::function<void(UARTDirection, uint8_t)> &&callback);
+#endif
+
  protected:
   void check_logger_conflict_();
   bool check_read_timeout_(size_t len = 1);
@@ -119,6 +132,9 @@ class UARTComponent : public Component, public Stream {
   uint8_t stop_bits_;
   uint8_t data_bits_;
   UARTParityOptions parity_;
+#ifdef USE_UART_DATA_TRIGGER
+  CallbackManager<void(UARTDirection, uint8_t)> data_callback_{};
+#endif
 
  private:
 #ifdef ARDUINO_ARCH_ESP8266
