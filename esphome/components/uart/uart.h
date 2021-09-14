@@ -19,8 +19,9 @@ enum UARTParityOptions {
 
 #ifdef USE_UART_DATA_TRIGGER
 enum UARTDirection {
-    UART_RECEIVE,
-    UART_TRANSMIT
+    UART_DIRECTION_RX,
+    UART_DIRECTION_TX,
+    UART_DIRECTION_BOTH,
 };
 #endif
 
