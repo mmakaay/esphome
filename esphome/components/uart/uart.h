@@ -21,7 +21,7 @@ enum UARTParityOptions {
 enum UARTDirection {
     UART_RECEIVE,
     UART_TRANSMIT
-}
+};
 #endif
 
 const LogString *parity_to_str(UARTParityOptions parity);
