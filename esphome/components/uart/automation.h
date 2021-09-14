@@ -75,8 +75,8 @@ class UARTDataTrigger : public Trigger<UARTDirection, std::vector<uint8_t>> {
       if (bytes_.size() == 0) { return false; }
       if (this->after_bytes_ > 0 && bytes_.size() >= this->after_bytes_) { return true; }
       if (this->after_newline_ && byte == '\n') { return true; }
-      if (this->before_transmit_ && direction == UART_RECEIVE) { return true; }
-      if (this->before_receive_ && direction == UART_TRANSMIT) { return true; }
+      if (this->before_transmit_ && direction == UART_TRANSMIT) { return true; }
+      if (this->before_receive_ && direction == UART_RECEIVE) { return true; }
       // TODO timeout
       return false;
   }

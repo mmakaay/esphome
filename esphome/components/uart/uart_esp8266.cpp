@@ -121,7 +121,9 @@ void UARTComponent::write_byte(uint8_t data) {
     this->sw_serial_->write_byte(data);
   }
   ESP_LOGVV(TAG, "    Wrote 0b" BYTE_TO_BINARY_PATTERN " (0x%02X)", BYTE_TO_BINARY(data), data);
+#ifdef USE_UART_DATA_TRIGGER
   this->data_callback_.call(UART_TRANSMIT, data);
+#endif
 }
 void UARTComponent::write_array(const uint8_t *data, size_t len) {
   if (this->hw_serial_ != nullptr) {
@@ -132,7 +134,9 @@ void UARTComponent::write_array(const uint8_t *data, size_t len) {
   }
   for (size_t i = 0; i < len; i++) {
     ESP_LOGVV(TAG, "    Wrote 0b" BYTE_TO_BINARY_PATTERN " (0x%02X)", BYTE_TO_BINARY(data[i]), data[i]);
+#ifdef USE_UART_DATA_TRIGGER
     this->data_callback_.call(UART_TRANSMIT, data[i]);
+#endif
   }
 }
 void UARTComponent::write_str(const char *str) {
@@ -154,7 +158,9 @@ bool UARTComponent::read_byte(uint8_t *data) {
     *data = this->sw_serial_->read_byte();
   }
   ESP_LOGVV(TAG, "    Read 0b" BYTE_TO_BINARY_PATTERN " (0x%02X)", BYTE_TO_BINARY(*data), *data);
+#ifdef USE_UART_DATA_TRIGGER
   this->data_callback_.call(UART_RECEIVE, *data);
+#endif
   return true;
 }
 bool UARTComponent::peek_byte(uint8_t *data) {
@@ -178,7 +184,9 @@ bool UARTComponent::read_array(uint8_t *data, size_t len) {
   }
   for (size_t i = 0; i < len; i++) {
     ESP_LOGVV(TAG, "    Read 0b" BYTE_TO_BINARY_PATTERN " (0x%02X)", BYTE_TO_BINARY(data[i]), data[i]);
+#ifdef USE_UART_DATA_TRIGGER
     this->data_callback_.call(UART_RECEIVE, data[i]);
+#endif
   }
 
   return true;
