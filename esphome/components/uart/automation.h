@@ -38,8 +38,10 @@ template<typename... Ts> class UARTWriteAction : public Action<Ts...>, public Pa
 class UARTDataTrigger : public Trigger<UARTDirection, std::vector<uint8_t>> {
  public:
   explicit UARTDataTrigger(UARTComponent *parent) {
-    parent->add_data_callback([this, parent](UARTDirection direction, uint8_t byte) {
-      add_(direction, byte);
+    parent->add_data_callback([this](UARTDirection direction, uint8_t byte) {
+      if (this->pre_trigger_constraint_met_(direction)) { this->fire_trigger_(); }
+      this->store_byte_(direction, byte);
+      if (this->post_trigger_constraint_met_()) { this->fire_trigger_(); }
     });
   }
   void set_direction(UARTDirection direction) { this->for_direction_ = direction; }
@@ -56,43 +58,43 @@ class UARTDataTrigger : public Trigger<UARTDirection, std::vector<uint8_t>> {
   uint32_t after_timeout_;
   bool after_newline_;
 
-  void add_(UARTDirection direction, uint8_t byte) {
+  bool pre_trigger_constraint_met_(UARTDirection direction) {
     // When debugging traffic in both the RX and TX direction, and a change of
     // direcion in traffic is detected, then fire this trigger when data are
     // available for the previous direction.
-    if (for_direction_ == UART_DIRECTION_BOTH && last_direction_ != direction && bytes_.size()) {
-      if (last_direction_ == UART_DIRECTION_TX) {
-        ESP_LOGE("DEBUG", ">>> %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
-      } else {
-        ESP_LOGE("DEBUG", "<<< %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
-      }
-      trigger(last_direction_, bytes_);
-      bytes_.clear();
-    }
-    // Store the new byte if it matches the direction for this object.
+    if (bytes_.size() == 0) { return false; }
+    if (for_direction_ != UART_DIRECTION_BOTH) { return false; }
+    if (last_direction_ == direction) { return false; }
+    return true;
+  }
+
+  void store_byte_(UARTDirection direction, uint8_t byte) {
+    // Only store the new byte if it matches the direction for this object.
     if (this->for_direction_ == UART_DIRECTION_BOTH || this->for_direction_ == direction) {
       bytes_.push_back(byte);
       last_direction_ = direction;
     }
-    // When a constaint for triggering is met, then fire this trigger.
-    if (this->do_trigger_(direction, byte)) {
-      if (last_direction_ == UART_DIRECTION_TX) {
-        ESP_LOGE("DEBUG", ">>> %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
-      } else {
-        ESP_LOGE("DEBUG", "<<< %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
-      }
-      trigger(last_direction_, bytes_);
-      bytes_.clear();
-    }
   }
 
-  bool do_trigger_(UARTDirection  direction, uint8_t byte) {
-      if (bytes_.size() == 0) { return false; }
-      if (this->after_bytes_ > 0 && bytes_.size() >= this->after_bytes_) { return true; }
-      if (this->after_newline_ && byte == '\n') { return true; }
-      // TODO delimiter
-      // TODO timeout
-      return false;
+  bool post_trigger_constraint_met_() {
+    if (bytes_.size() == 0) { return false; }
+    if (this->after_bytes_ > 0 && bytes_.size() >= this->after_bytes_) { return true; }
+    // broken if (this->after_newline_ && *(bytes_.end()) == '\n') { return true; }
+    // TODO delimiter
+    // TODO timeout
+    return false;
+  }
+
+  void fire_trigger_() {
+    // DEBUG TODO temp for development purposes.
+    if (last_direction_ == UART_DIRECTION_TX) {
+      ESP_LOGE("DEBUG", ">>> %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
+    } else {
+      ESP_LOGE("DEBUG", "<<< %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
+    }
+
+    trigger(last_direction_, bytes_);
+    bytes_.clear();
   }
 };
 #endif
