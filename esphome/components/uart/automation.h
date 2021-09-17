@@ -62,23 +62,23 @@ class UARTDataTrigger : public Trigger<UARTDirection, std::vector<uint8_t>> {
     // When debugging traffic in both the RX and TX direction, and a change of
     // direcion in traffic is detected, then fire this trigger when data are
     // available for the previous direction.
-    if (bytes_.size() == 0) { return false; }
-    if (for_direction_ != UART_DIRECTION_BOTH) { return false; }
-    if (last_direction_ == direction) { return false; }
+    if (this->bytes_.size() == 0) { return false; }
+    if (this->for_direction_ != UART_DIRECTION_BOTH) { return false; }
+    if (this->last_direction_ == direction) { return false; }
     return true;
   }
 
   void store_byte_(UARTDirection direction, uint8_t byte) {
     // Only store the new byte if it matches the direction for this object.
     if (this->for_direction_ == UART_DIRECTION_BOTH || this->for_direction_ == direction) {
-      bytes_.push_back(byte);
-      last_direction_ = direction;
+      this->bytes_.push_back(byte);
+      this->last_direction_ = direction;
     }
   }
 
   bool post_trigger_constraint_met_() {
-    if (bytes_.size() == 0) { return false; }
-    if (this->after_bytes_ > 0 && bytes_.size() >= this->after_bytes_) { return true; }
+    if (this->bytes_.size() == 0) { return false; }
+    if (this->after_bytes_ > 0 && this->bytes_.size() >= this->after_bytes_) { return true; }
     // broken if (this->after_newline_ && *(bytes_.end()) == '\n') { return true; }
     // TODO delimiter
     // TODO timeout
@@ -87,14 +87,14 @@ class UARTDataTrigger : public Trigger<UARTDirection, std::vector<uint8_t>> {
 
   void fire_trigger_() {
     // DEBUG TODO temp for development purposes.
-    if (last_direction_ == UART_DIRECTION_TX) {
-      ESP_LOGE("DEBUG", ">>> %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
+    if (this->last_direction_ == UART_DIRECTION_TX) {
+      ESP_LOGE("DEBUG", ">>> %s", (std::string(this->bytes_.begin(), this->bytes_.end())).c_str());
     } else {
-      ESP_LOGE("DEBUG", "<<< %s", (std::string(bytes_.begin(), bytes_.end())).c_str());
+      ESP_LOGE("DEBUG", "<<< %s", (std::string(this->bytes_.begin(), this->bytes_.end())).c_str());
     }
 
-    trigger(last_direction_, bytes_);
-    bytes_.clear();
+    trigger(this->last_direction_, this->bytes_);
+    this->bytes_.clear();
   }
 };
 #endif

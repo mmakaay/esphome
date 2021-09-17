@@ -14,18 +14,17 @@ from esphome.const import (
     CONF_RX_BUFFER_SIZE,
     CONF_INVERT,
     CONF_TRIGGER_ID,
+    CONF_SEQUENCE,
+    CONF_TIMEOUT,
 )
 from esphome.core import CORE
 
 CODEOWNERS = ["@esphome/core"]
 
 CONF_DEBUG = "debug"
-CONF_ON_TRANSMIT = "on_transmit"
-CONF_ON_RECEIVE = "on_receive"
-CONF_ON_DATA = "on_data"
-CONF_AFTER_BYTES = "after_bytes"
-CONF_AFTER_TIMEOUT = "after_timeout"
-CONF_AFTER_NEWLINE = "after_newline"
+CONF_DIRECTION = "direction"
+CONF_AFTER = "after"
+CONF_BYTES = "bytes"
 
 uart_ns = cg.esphome_ns.namespace("uart")
 UARTComponent = uart_ns.class_("UARTComponent", cg.Component)
@@ -34,6 +33,12 @@ UARTWriteAction = uart_ns.class_("UARTWriteAction", automation.Action)
 UARTDirection = uart_ns.enum("UARTDirection")
 UARTDataTrigger = uart_ns.class_("UARTDataTrigger", automation.Action)
 MULTI_CONF = True
+
+UART_DIRECTIONS = {
+    "RX": UARTDirection.UART_DIRECTION_RX,
+    "TX": UARTDirection.UART_DIRECTION_TX,
+    "BOTH": UARTDirection.UART_DIRECTION_BOTH,
+}
 
 
 def validate_raw_data(value):
@@ -64,12 +69,21 @@ CONF_STOP_BITS = "stop_bits"
 CONF_DATA_BITS = "data_bits"
 CONF_PARITY = "parity"
 
-DEBUGGER_SCHEMA = cv.Schema(
+DEBUG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(UARTDataTrigger),
-        cv.Optional(CONF_AFTER_BYTES, default=1024): cv.validate_bytes,
-        cv.Optional(CONF_AFTER_TIMEOUT): cv.positive_time_period_milliseconds,
-        cv.Optional(CONF_AFTER_NEWLINE, default=True): cv.boolean,
+        cv.Optional(CONF_DIRECTION, default="BOTH"): cv.enum(
+            UART_DIRECTIONS, upper=True
+        ),
+        cv.Optional(CONF_AFTER): cv.Schema(
+            {
+                cv.Optional(CONF_BYTES, default=256): cv.validate_bytes,
+                cv.Optional(
+                    CONF_TIMEOUT, default=100
+                ): cv.positive_time_period_milliseconds,
+            }
+        ),
+        cv.Required(CONF_SEQUENCE): automation.validate_automation(),
     }
 )
 
@@ -89,37 +103,28 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_PARITY, default="NONE"): cv.enum(
                 UART_PARITY_OPTIONS, upper=True
             ),
-            cv.Optional(CONF_DEBUG): cv.Schema(
-                {
-                    cv.Optional(CONF_ON_RECEIVE): automation.validate_automation(
-                        DEBUGGER_SCHEMA
-                    ),
-                    cv.Optional(CONF_ON_TRANSMIT): automation.validate_automation(
-                        DEBUGGER_SCHEMA
-                    ),
-                    cv.Optional(CONF_ON_DATA): automation.validate_automation(
-                        DEBUGGER_SCHEMA
-                    ),
-                }
-            ),
+            cv.Optional(CONF_DEBUG): DEBUG_SCHEMA,
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.has_at_least_one_key(CONF_TX_PIN, CONF_RX_PIN),
 )
 
 
-async def data_trigger_to_code(conf, var, direction):
+async def debug_to_code(conf, var):
     trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-    await automation.build_automation(
-        trigger,
-        [(UARTDirection, "direction"), (cg.std_vector.template(cg.uint8), "byte")],
-        conf,
-    )
-    cg.add(trigger.set_direction(direction))
-    cg.add(trigger.set_after_bytes(conf[CONF_AFTER_BYTES]))
-    cg.add(trigger.set_after_newline(conf[CONF_AFTER_NEWLINE]))
-    if CONF_AFTER_TIMEOUT in conf:
-        cg.add(trigger.set_after_timeout(conf[CONF_AFTER_TIMEOUT]))
+    for action in conf[CONF_SEQUENCE]:
+        await automation.build_automation(
+            trigger,
+            [(UARTDirection, "direction"), (cg.std_vector.template(cg.uint8), "byte")],
+            action,
+        )
+    cg.add(trigger.set_direction(conf[CONF_DIRECTION]))
+    after = conf[CONF_AFTER]
+    if CONF_BYTES in after:
+        cg.add(trigger.set_after_bytes(after[CONF_BYTES]))
+    # cg.add(trigger.set_after_newline(conf[CONF_AFTER_NEWLINE]))
+    # if CONF_AFTER_TIMEOUT in conf:
+    #    cg.add(trigger.set_after_timeout(conf[CONF_AFTER_TIMEOUT]))
     cg.add_define("USE_UART_DATA_TRIGGER")
 
 
@@ -142,13 +147,7 @@ async def to_code(config):
     cg.add(var.set_parity(config[CONF_PARITY]))
 
     if CONF_DEBUG in config:
-        debug = config[CONF_DEBUG]
-        for conf in debug.get(CONF_ON_RECEIVE, []):
-            await data_trigger_to_code(conf, var, UARTDirection.UART_DIRECTION_RX)
-        for conf in debug.get(CONF_ON_TRANSMIT, []):
-            await data_trigger_to_code(conf, var, UARTDirection.UART_DIRECTION_TX)
-        for conf in debug.get(CONF_ON_DATA, []):
-            await data_trigger_to_code(conf, var, UARTDirection.UART_DIRECTION_BOTH)
+        await debug_to_code(config[CONF_DEBUG], var)
 
 
 # A schema to use for all UART devices, all UART integrations must extend this!
