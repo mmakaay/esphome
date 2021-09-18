@@ -21,6 +21,8 @@ from esphome.core import CORE
 
 CODEOWNERS = ["@esphome/core"]
 
+CONF_SINK_RX = "sink_rx"
+CONF_SINK_RX_ID = "sink_rx_id"
 CONF_DEBUG = "debug"
 CONF_DIRECTION = "direction"
 CONF_AFTER = "after"
@@ -32,6 +34,7 @@ UARTDevice = uart_ns.class_("UARTDevice")
 UARTWriteAction = uart_ns.class_("UARTWriteAction", automation.Action)
 UARTDirection = uart_ns.enum("UARTDirection")
 UARTDataTrigger = uart_ns.class_("UARTDataTrigger", automation.Action)
+UARTDebuggerRXSink = uart_ns.class_("UARTDebuggerRXSink", cg.Component)
 MULTI_CONF = True
 
 UART_DIRECTIONS = {
@@ -84,6 +87,8 @@ DEBUG_SCHEMA = cv.Schema(
             }
         ),
         cv.Required(CONF_SEQUENCE): automation.validate_automation(),
+        cv.Optional(CONF_SINK_RX, default=False): cv.boolean,
+        cv.GenerateID(CONF_SINK_RX_ID): cv.declare_id(UARTDebuggerRXSink),
     }
 )
 
@@ -110,22 +115,25 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
-async def debug_to_code(conf, var):
-    trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-    for action in conf[CONF_SEQUENCE]:
+async def debug_to_code(config, parent):
+    trigger = cg.new_Pvariable(config[CONF_TRIGGER_ID], parent)
+    for action in config[CONF_SEQUENCE]:
         await automation.build_automation(
             trigger,
-            [(UARTDirection, "direction"), (cg.std_vector.template(cg.uint8), "byte")],
+            [(UARTDirection, "direction"), (cg.std_vector.template(cg.uint8), "bytes")],
             action,
         )
-    cg.add(trigger.set_direction(conf[CONF_DIRECTION]))
-    after = conf[CONF_AFTER]
+    cg.add(trigger.set_direction(config[CONF_DIRECTION]))
+    after = config[CONF_AFTER]
     if CONF_BYTES in after:
         cg.add(trigger.set_after_bytes(after[CONF_BYTES]))
-    # cg.add(trigger.set_after_newline(conf[CONF_AFTER_NEWLINE]))
-    # if CONF_AFTER_TIMEOUT in conf:
-    #    cg.add(trigger.set_after_timeout(conf[CONF_AFTER_TIMEOUT]))
-    cg.add_define("USE_UART_DATA_TRIGGER")
+    # cg.add(trigger.set_after_newline(config[CONF_AFTER_NEWLINE]))
+    # if CONF_AFTER_TIMEOUT in config:
+    #    cg.add(trigger.set_after_timeout(config[CONF_AFTER_TIMEOUT]))
+    if config[CONF_SINK_RX]:
+        dummy = cg.new_Pvariable(config[CONF_SINK_RX_ID], parent)
+        await cg.register_component(dummy, {})
+    cg.add_define("USE_UART_DEBUGGER")
 
 
 async def to_code(config):

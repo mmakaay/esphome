@@ -78,7 +78,7 @@ const LogString *parity_to_str(UARTParityOptions parity) {
   }
 }
 
-#ifdef USE_UART_DATA_TRIGGER
+#ifdef USE_UART_DEBUGGER
 void UARTComponent::add_data_callback(std::function<void(UARTDirection, uint8_t)> &&callback) {
   this->data_callback_.add(std::move(callback));    
 }

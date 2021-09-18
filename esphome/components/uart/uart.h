@@ -17,7 +17,7 @@ enum UARTParityOptions {
   UART_CONFIG_PARITY_ODD,
 };
 
-#ifdef USE_UART_DATA_TRIGGER
+#ifdef USE_UART_DEBUGGER
 enum UARTDirection {
     UART_DIRECTION_RX,
     UART_DIRECTION_TX,
@@ -110,7 +110,7 @@ class UARTComponent : public Component, public Stream {
   void set_data_bits(uint8_t data_bits) { this->data_bits_ = data_bits; }
   void set_parity(UARTParityOptions parity) { this->parity_ = parity; }
 
-#ifdef USE_UART_DATA_TRIGGER
+#ifdef USE_UART_DEBUGGER
   void add_data_callback(std::function<void(UARTDirection, uint8_t)> &&callback);
 #endif
 
@@ -133,7 +133,7 @@ class UARTComponent : public Component, public Stream {
   uint8_t stop_bits_;
   uint8_t data_bits_;
   UARTParityOptions parity_;
-#ifdef USE_UART_DATA_TRIGGER
+#ifdef USE_UART_DEBUGGER
   CallbackManager<void(UARTDirection, uint8_t)> data_callback_{};
 #endif
 
