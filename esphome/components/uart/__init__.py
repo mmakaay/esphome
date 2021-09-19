@@ -21,8 +21,8 @@ from esphome.core import CORE
 
 CODEOWNERS = ["@esphome/core"]
 
-CONF_SINK_RX = "sink_rx"
-CONF_SINK_RX_ID = "sink_rx_id"
+CONF_DUMMY_RECEIVER = "dummy_receiver"
+CONF_DUMMY_RECEIVER_ID = "dummy_receiver_id"
 CONF_DEBUG = "debug"
 CONF_DIRECTION = "direction"
 CONF_AFTER = "after"
@@ -35,7 +35,7 @@ UARTDevice = uart_ns.class_("UARTDevice")
 UARTWriteAction = uart_ns.class_("UARTWriteAction", automation.Action)
 UARTDirection = uart_ns.enum("UARTDirection")
 UARTDebugger = uart_ns.class_("UARTDebugger", cg.Component, automation.Action)
-UARTDebuggerRXSink = uart_ns.class_("UARTDebuggerRXSink", cg.Component)
+UARTDummyReceiver = uart_ns.class_("UARTDummyReceiver", cg.Component)
 MULTI_CONF = True
 
 UART_DIRECTIONS = {
@@ -89,8 +89,8 @@ DEBUG_SCHEMA = cv.Schema(
             }
         ),
         cv.Required(CONF_SEQUENCE): automation.validate_automation(),
-        cv.Optional(CONF_SINK_RX, default=False): cv.boolean,
-        cv.GenerateID(CONF_SINK_RX_ID): cv.declare_id(UARTDebuggerRXSink),
+        cv.Optional(CONF_DUMMY_RECEIVER, default=False): cv.boolean,
+        cv.GenerateID(CONF_DUMMY_RECEIVER_ID): cv.declare_id(UARTDummyReceiver),
     }
 )
 
@@ -138,8 +138,8 @@ async def debug_to_code(config, parent):
             data = list(data)
         for byte in after[CONF_DELIMITER]:
             cg.add(trigger.add_delimiter_byte(byte))
-    if config[CONF_SINK_RX]:
-        dummy = cg.new_Pvariable(config[CONF_SINK_RX_ID], parent)
+    if config[CONF_DUMMY_RECEIVER]:
+        dummy = cg.new_Pvariable(config[CONF_DUMMY_RECEIVER_ID], parent)
         await cg.register_component(dummy, {})
     cg.add_define("USE_UART_DEBUGGER")
 

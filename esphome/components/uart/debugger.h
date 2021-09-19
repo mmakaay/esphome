@@ -118,9 +118,9 @@ class UARTDebugger : public Component, public Trigger<UARTDirection, std::vector
 /// most useful when the debugger is used to reverse engineer a serial
 /// protocol, for which no specific UARTDevice implementation exists yet,
 /// but for which the incoming bytes must be read to drive the debugger.
-class UARTDebuggerRXSink : public Component, public UARTDevice {
+class UARTDummyReceiver : public Component, public UARTDevice {
  public:
-  UARTDebuggerRXSink(UARTComponent *parent) : UARTDevice(parent) {}
+  UARTDummyReceiver(UARTComponent *parent) : UARTDevice(parent) {}
   void loop() override {
     // Reading up to a maximum number of bytes, to make sure that this loop()
     // won't lock up the system on a continuous incoming stream of bytes.
