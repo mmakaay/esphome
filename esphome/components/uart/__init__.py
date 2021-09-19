@@ -136,9 +136,8 @@ async def debug_to_code(config, parent):
         data = after[CONF_DELIMITER]
         if isinstance(data, bytes):
             data = list(data)
-        print(repr(data))
-        for c in after[CONF_DELIMITER]:
-            cg.add(trigger.add_delimiter_byte(c))
+        for byte in after[CONF_DELIMITER]:
+            cg.add(trigger.add_delimiter_byte(byte))
     if config[CONF_SINK_RX]:
         dummy = cg.new_Pvariable(config[CONF_SINK_RX_ID], parent)
         await cg.register_component(dummy, {})

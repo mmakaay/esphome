@@ -78,8 +78,9 @@ class UARTDebugger : public Component, public Trigger<UARTDirection, std::vector
           this->after_delimiter_pos_ = 0;
           return true;
         }
+      } else {
+        this->after_delimiter_pos_ = 0;
       }
-      this->after_delimiter_pos_ = 0;
     }
     return false;
   }
