@@ -27,13 +27,14 @@ CONF_DEBUG = "debug"
 CONF_DIRECTION = "direction"
 CONF_AFTER = "after"
 CONF_BYTES = "bytes"
+CONF_DELIMITER = "delimiter"
 
 uart_ns = cg.esphome_ns.namespace("uart")
 UARTComponent = uart_ns.class_("UARTComponent", cg.Component)
 UARTDevice = uart_ns.class_("UARTDevice")
 UARTWriteAction = uart_ns.class_("UARTWriteAction", automation.Action)
 UARTDirection = uart_ns.enum("UARTDirection")
-UARTDataTrigger = uart_ns.class_("UARTDataTrigger", automation.Action)
+UARTDebugger = uart_ns.class_("UARTDebugger", cg.Component, automation.Action)
 UARTDebuggerRXSink = uart_ns.class_("UARTDebuggerRXSink", cg.Component)
 MULTI_CONF = True
 
@@ -74,7 +75,7 @@ CONF_PARITY = "parity"
 
 DEBUG_SCHEMA = cv.Schema(
     {
-        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(UARTDataTrigger),
+        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(UARTDebugger),
         cv.Optional(CONF_DIRECTION, default="BOTH"): cv.enum(
             UART_DIRECTIONS, upper=True
         ),
@@ -84,6 +85,7 @@ DEBUG_SCHEMA = cv.Schema(
                 cv.Optional(
                     CONF_TIMEOUT, default=100
                 ): cv.positive_time_period_milliseconds,
+                cv.Optional(CONF_DELIMITER): cv.templatable(validate_raw_data),
             }
         ),
         cv.Required(CONF_SEQUENCE): automation.validate_automation(),
@@ -117,6 +119,7 @@ CONFIG_SCHEMA = cv.All(
 
 async def debug_to_code(config, parent):
     trigger = cg.new_Pvariable(config[CONF_TRIGGER_ID], parent)
+    await cg.register_component(trigger, config)
     for action in config[CONF_SEQUENCE]:
         await automation.build_automation(
             trigger,
@@ -127,9 +130,15 @@ async def debug_to_code(config, parent):
     after = config[CONF_AFTER]
     if CONF_BYTES in after:
         cg.add(trigger.set_after_bytes(after[CONF_BYTES]))
-    # cg.add(trigger.set_after_newline(config[CONF_AFTER_NEWLINE]))
-    # if CONF_AFTER_TIMEOUT in config:
-    #    cg.add(trigger.set_after_timeout(config[CONF_AFTER_TIMEOUT]))
+    if CONF_TIMEOUT in after:
+        cg.add(trigger.set_after_timeout(after[CONF_TIMEOUT]))
+    if CONF_DELIMITER in after:
+        data = after[CONF_DELIMITER]
+        if isinstance(data, bytes):
+            data = list(data)
+        print(repr(data))
+        for c in after[CONF_DELIMITER]:
+            cg.add(trigger.add_delimiter_byte(c))
     if config[CONF_SINK_RX]:
         dummy = cg.new_Pvariable(config[CONF_SINK_RX_ID], parent)
         await cg.register_component(dummy, {})
