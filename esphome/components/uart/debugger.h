@@ -114,10 +114,11 @@ class UARTDebugger : public Component, public Trigger<UARTDirection, std::vector
 };
 
 /// This UARTDevice is used by the serial debugger to read data from a
-/// serial interface. The data are not stored, nor processed. This is
-/// most useful when the debugger is used to reverse engineer a serial
-/// protocol, for which no specific UARTDevice implementation exists yet,
-/// but for which the incoming bytes must be read to drive the debugger.
+/// serial interface when the 'dummy_receiver' option is enabled.
+/// The data are not stored, nor processed. This is most useful when the
+/// debugger is used to reverse engineer a serial protocol, for which no
+/// specific UARTDevice implementation exists (yet), but for which the
+/// incoming bytes must be read to drive the debugger.
 class UARTDummyReceiver : public Component, public UARTDevice {
  public:
   UARTDummyReceiver(UARTComponent *parent) : UARTDevice(parent) {}
