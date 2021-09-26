@@ -10,6 +10,7 @@ from esphome.const import (
     CONF_REF,
     CONF_REFRESH,
     CONF_URL,
+    CONF_COMPONENT,
 )
 import esphome.config_validation as cv
 
@@ -36,12 +37,12 @@ def _merge_package(full_old, full_new):
     return merge(full_old, full_new)
 
 
-def validate_git_package(config: dict):
+def validate_remote_git_packages(config: dict):
     new_config = config
     for key, conf in config.items():
         if CONF_URL in conf:
             try:
-                conf = BASE_SCHEMA(conf)
+                conf = REMOTE_GIT_SCHEMA(conf)
                 if CONF_FILE in conf:
                     new_config[key][CONF_FILES] = [conf[CONF_FILE]]
                     del new_config[key][CONF_FILE]
@@ -65,31 +66,7 @@ def validate_yaml_filename(value):
     return value
 
 
-def validate_source_shorthand(value):
-    if not isinstance(value, str):
-        raise cv.Invalid("Shorthand only for strings")
-
-    m = re.match(
-        r"github://([a-zA-Z0-9\-]+)/([a-zA-Z0-9\-\._]+)/([a-zA-Z0-9\-_.\./]+)(?:@([a-zA-Z0-9\-_.\./]+))?",
-        value,
-    )
-    if m is None:
-        raise cv.Invalid(
-            "Source is not a file system path or in expected github://username/name/[sub-folder/]file-path.yml[@branch-or-tag] format!"
-        )
-
-    conf = {
-        CONF_URL: f"https://github.com/{m.group(1)}/{m.group(2)}.git",
-        CONF_FILE: m.group(3),
-    }
-    if m.group(4):
-        conf[CONF_REF] = m.group(4)
-
-    # print(conf)
-    return BASE_SCHEMA(conf)
-
-
-BASE_SCHEMA = cv.All(
+REMOTE_GIT_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.Required(CONF_URL): cv.url,
@@ -108,17 +85,78 @@ BASE_SCHEMA = cv.All(
 )
 
 
-CONFIG_SCHEMA = cv.All(
+def validate_remote_git_shorthand(value):
+    if not isinstance(value, str):
+        raise cv.Invalid("Shorthand only for strings")
+
+    m = re.match(
+        r"github://([a-zA-Z0-9-]+)/([a-zA-Z0-9._-]+)/([a-zA-Z0-9_./-]+)(?:@([a-zA-Z0-9_./-]+))?",
+        value,
+    )
+    if m is None:
+        raise cv.Invalid(
+            "Source is not in expected github://username/name/[sub-folder/]file-path.yml[@branch-or-tag] format!"
+        )
+
+    conf = {
+        CONF_URL: f"https://github.com/{m.group(1)}/{m.group(2)}.git",
+        CONF_FILE: m.group(3),
+    }
+    if m.group(4):
+        conf[CONF_REF] = m.group(4)
+
+    return REMOTE_GIT_SCHEMA(conf)
+
+
+COMPONENT_SCHEMA = cv.All(
     cv.Schema(
         {
-            str: cv.Any(validate_source_shorthand, BASE_SCHEMA, dict),
+            cv.Required(CONF_COMPONENT): cv.string,
+            cv.Exclusive(CONF_FILE, "files"): validate_yaml_filename,
+            cv.Exclusive(CONF_FILES, "files"): cv.All(
+                cv.ensure_list(validate_yaml_filename),
+                cv.Length(min=1),
+            ),
         }
     ),
-    validate_git_package,
+    cv.has_at_least_one_key(CONF_FILE, CONF_FILES),
 )
 
 
-def _process_base_package(config: dict) -> dict:
+def validate_component_shorthand(value):
+    if not isinstance(value, str):
+        raise cv.Invalid("Shorthand only for strings")
+
+    m = re.match(r"(\w+)::([a-zA-Z0-9_./-]+)", value)
+    if m is None:
+        raise cv.Invalid(
+            "Source is not in expected module::path/to/config.yaml format!"
+        )
+    conf = {
+        CONF_COMPONENT: m.group(1),
+        CONF_FILE: m.group(2),
+    }
+
+    return COMPONENT_SCHEMA(conf)
+
+
+CONFIG_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            str: cv.Any(
+                validate_remote_git_shorthand,
+                REMOTE_GIT_SCHEMA,
+                validate_component_shorthand,
+                COMPONENT_SCHEMA,
+                dict,
+            ),
+        }
+    ),
+    validate_remote_git_packages,
+)
+
+
+def _process_remote_git_package(config: dict) -> dict:
     repo_dir = git.clone_or_update(
         url=config[CONF_URL],
         ref=config.get(CONF_REF),
@@ -158,7 +196,7 @@ def do_packages_pass(config: dict):
             with cv.prepend_path(package_name):
                 recursive_package = package_config
                 if CONF_URL in package_config:
-                    package_config = _process_base_package(package_config)
+                    package_config = _process_remote_git_package(package_config)
                 if isinstance(package_config, dict):
                     recursive_package = do_packages_pass(package_config)
                 config = _merge_package(recursive_package, config)
