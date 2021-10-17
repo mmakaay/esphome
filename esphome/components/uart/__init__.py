@@ -17,17 +17,19 @@ from esphome.const import (
     CONF_TRIGGER_ID,
     CONF_SEQUENCE,
     CONF_TIMEOUT,
-    CONF_DEBUG,
     CONF_DIRECTION,
-    CONF_AFTER,
-    CONF_BYTES,
-    CONF_DELIMITER,
-    CONF_DUMMY_RECEIVER,
-    CONF_DUMMY_RECEIVER_ID,
 )
 from esphome.core import CORE
 
 CODEOWNERS = ["@esphome/core"]
+
+CONF_AFTER = "after"
+CONF_BYTES = "bytes"
+CONF_DEBUG = "debug"
+CONF_DELIMITER = "delimiter"
+CONF_DUMMY_RECEIVER = "dummy_receiver"
+CONF_DUMMY_RECEIVER_ID = "dummy_receiver_id"
+
 uart_ns = cg.esphome_ns.namespace("uart")
 UARTComponent = uart_ns.class_("UARTComponent")
 
