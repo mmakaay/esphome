@@ -20,9 +20,12 @@ CONF_GAS_MBUS_ID = "gas_mbus_id"
 CONF_MAX_TELEGRAM_LENGTH = "max_telegram_length"
 CONF_REQUEST_INTERVAL = "request_interval"
 CONF_REQUEST_PIN = "request_pin"
+CONF_INPUT_ID = "input_id"
 
 # Hack to prevent compile error due to ambiguity with lib namespace
 dsmr_ns = cg.esphome_ns.namespace("esphome::dsmr")
+DsmrInput = dsmr_ns.class_("DsmrInput")
+DsmrUARTInput = dsmr_ns.class_("DsmrUARTInput", DsmrInput)
 Dsmr = dsmr_ns.class_("Dsmr", cg.Component, uart.UARTDevice)
 
 
@@ -48,6 +51,7 @@ CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(Dsmr),
+            cv.GenerateID(CONF_INPUT_ID): cv.declare_id(DsmrUARTInput),
             cv.Optional(CONF_DECRYPTION_KEY): _validate_key,
             cv.Optional(CONF_CRC_CHECK, default=True): cv.boolean,
             cv.Optional(CONF_GAS_MBUS_ID, default=1): cv.int_,
@@ -67,7 +71,8 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     uart_component = await cg.get_variable(config[CONF_UART_ID])
-    var = cg.new_Pvariable(config[CONF_ID], uart_component, config[CONF_CRC_CHECK])
+    uart_input = cg.new_Pvariable(config[CONF_INPUT_ID], uart_component)
+    var = cg.new_Pvariable(config[CONF_ID], uart_input, config[CONF_CRC_CHECK])
     cg.add(var.set_max_telegram_length(config[CONF_MAX_TELEGRAM_LENGTH]))
     if CONF_DECRYPTION_KEY in config:
         cg.add(var.set_decryption_key(config[CONF_DECRYPTION_KEY]))

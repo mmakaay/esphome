@@ -13,6 +13,8 @@
 #include <dsmr/parser.h>
 #include <dsmr/fields.h>
 
+#include "dsmr_input.h"
+
 namespace esphome {
 namespace dsmr {
 
@@ -45,9 +47,9 @@ using namespace ::dsmr::fields;
 using MyData = ::dsmr::ParsedData<DSMR_TEXT_SENSOR_LIST(DSMR_DATA_SENSOR, DSMR_COMMA)
                                       DSMR_BOTH DSMR_SENSOR_LIST(DSMR_DATA_SENSOR, DSMR_COMMA)>;
 
-class Dsmr : public Component, public uart::UARTDevice {
+class Dsmr : public Component {
  public:
-  Dsmr(uart::UARTComponent *uart, bool crc_check) : uart::UARTDevice(uart), crc_check_(crc_check) {}
+  Dsmr(DsmrInput *input, bool crc_check) : input_(input), crc_check_(crc_check) {}
 
   void setup() override;
   void loop() override;
@@ -87,6 +89,8 @@ class Dsmr : public Component, public uart::UARTDevice {
   void receive_telegram_();
   void receive_encrypted_telegram_();
   void reset_telegram_();
+
+  DsmrInput *input_;
 
   /// Wait for UART data to become available within the read timeout.
   ///

@@ -42,8 +42,8 @@ bool Dsmr::ready_to_request_data_() {
       this->start_requesting_data_();
     }
     if (!this->requesting_data_) {
-      while (this->available()) {
-        this->read();
+      while (this->input_->available()) {
+        this->input_->read();
       }
     }
   }
@@ -62,7 +62,7 @@ bool Dsmr::receive_timeout_reached_() { return millis() - this->last_read_time_ 
 bool Dsmr::available_within_timeout_() {
   // Data are available for reading on the UART bus?
   // Then we can start reading right away.
-  if (this->available()) {
+  if (this->input_->available()) {
     this->last_read_time_ = millis();
     return true;
   }
@@ -77,10 +77,10 @@ bool Dsmr::available_within_timeout_() {
   // that the UART read buffer does not overflow while other components
   // perform their work in their loop. Do this by not returning control to
   // the main loop, until the read timeout is reached.
-  if (this->parent_->get_rx_buffer_size() < this->max_telegram_len_) {
+  if (!this->input_->can_buffer(this->max_telegram_len_)) {
     while (!this->receive_timeout_reached_()) {
       delay(5);
-      if (this->available()) {
+      if (this->input_->available()) {
         this->last_read_time_ = millis();
         return true;
       }
@@ -117,8 +117,8 @@ void Dsmr::stop_requesting_data_() {
     } else {
       ESP_LOGV(TAG, "Stop reading data from P1 port");
     }
-    while (this->available()) {
-      this->read();
+    while (this->input_->available()) {
+      this->input_->read();
     }
     this->requesting_data_ = false;
   }
@@ -135,7 +135,7 @@ void Dsmr::reset_telegram_() {
 
 void Dsmr::receive_telegram_() {
   while (this->available_within_timeout_()) {
-    const char c = this->read();
+    const char c = this->input_->read();
 
     // Find a new telegram header, i.e. forward slash.
     if (c == '/') {
@@ -189,7 +189,7 @@ void Dsmr::receive_telegram_() {
 
 void Dsmr::receive_encrypted_telegram_() {
   while (this->available_within_timeout_()) {
-    const char c = this->read();
+    const char c = this->input_->read();
 
     // Find a new telegram start byte.
     if (!this->header_found_) {
