@@ -23,6 +23,8 @@ CONF_REQUEST_PIN = "request_pin"
 
 # Hack to prevent compile error due to ambiguity with lib namespace
 dsmr_ns = cg.esphome_ns.namespace("esphome::dsmr")
+DsmrInput = dsmr_ns.class_("DsmrInput")
+DsmrUARTInput = dsmr_ns.class_("DsmrUARTInput", DsmrInput)
 Dsmr = dsmr_ns.class_("Dsmr", cg.Component, uart.UARTDevice)
 
 
