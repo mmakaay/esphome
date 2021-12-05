@@ -49,7 +49,7 @@ class DsmrReader {
   uint32_t receive_timeout_;
   size_t max_telegram_len_;
   bool receive_timeout_reached_();
-  uint32_t last_read_time_{0};
+  uint32_t last_receive_time_{0};
 };
 
 }  // namespace dsmr

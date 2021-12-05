@@ -16,7 +16,7 @@ void DsmrReader::dump_reader_config() {
 
 void DsmrReader::reset() {
   this->bytes_read_ = 0;
-  this->last_read_time_ = 0;
+  this->last_receive_time_ = 0;
   this->header_found_ = false;
   this->footer_found_ = false;
 }
@@ -38,10 +38,16 @@ bool DsmrReader::footer_found() {
 }
 
 bool DsmrReader::available() {
+  // Check for excessive telegram input data.
+  if (this->bytes_read() >= this->max_telegram_len_) {
+    ESP_LOGE(TAG, "Error: telegram larger than max expected size (%d bytes)", this->max_telegram_len_);
+    this->reset();
+  }
+
   // Data are available for reading on the UART bus?
   // Then we can start reading right away.
   if (this->input_->available()) {
-    this->last_read_time_ = millis();
+    this->last_receive_time_ = millis();
     return true;
   }
   // When we're not in the process of reading a telegram, then there is
@@ -59,7 +65,7 @@ bool DsmrReader::available() {
     while (!this->receive_timeout_reached_()) {
       delay(5);
       if (this->input_->available()) {
-        this->last_read_time_ = millis();
+        this->last_receive_time_ = millis();
         return true;
       }
     }
@@ -75,11 +81,13 @@ bool DsmrReader::available() {
 }
 
 bool DsmrReader::receive_timeout_reached_() {
-  return millis() - this->last_read_time_ > this->receive_timeout_;
+  return millis() - this->last_receive_time_ > this->receive_timeout_;
 }
 
 const char DsmrReader::read() {
-  this->bytes_read_++;
+  if (this->header_found_) {
+    this->bytes_read_++;
+  }
   return this->input_->read();
 }
 

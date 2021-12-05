@@ -39,13 +39,6 @@ void Dsmr::receive_telegram_() {
     if (!this->reader_->header_found())
       continue;
 
-    // Check for buffer overflow.
-    if (this->reader_->bytes_read() >= this->max_telegram_len_) {
-      this->reader_->reset();
-      ESP_LOGE(TAG, "Error: telegram larger than buffer (%d bytes)", this->max_telegram_len_);
-      return;
-    }
-
     // Some v2.2 or v3 meters will send a new value which starts with '('
     // in a new line, while the value belongs to the previous ObisId. For
     // proper parsing, remove these new line characters.
@@ -92,13 +85,6 @@ void Dsmr::receive_encrypted_telegram_() {
       this->reader_->reset();
       this->reader_->set_header_found();
       this->crypt_telegram_len_ = 0;
-    }
-
-    // Check for buffer overflow.
-    if (this->reader_->bytes_read() >= this->max_telegram_len_) {
-      this->reader_->reset();
-      ESP_LOGE(TAG, "Error: encrypted telegram larger than buffer (%d bytes)", this->max_telegram_len_);
-      return;
     }
 
     // Store the byte in the buffer.
