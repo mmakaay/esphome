@@ -15,6 +15,7 @@ void DsmrReader::dump_reader_config() {
 }
 
 void DsmrReader::reset() {
+  this->bytes_read_ = 0;
   this->last_read_time_ = 0;
   this->header_found_ = false;
   this->footer_found_ = false;
@@ -78,7 +79,12 @@ bool DsmrReader::receive_timeout_reached_() {
 }
 
 const char DsmrReader::read() {
+  this->bytes_read_++;
   return this->input_->read();
+}
+
+size_t DsmrReader::bytes_read() {
+  return this->bytes_read_;
 }
 
 }  // namespace dsmr

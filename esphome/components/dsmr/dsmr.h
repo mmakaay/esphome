@@ -89,7 +89,6 @@ class Dsmr : public Component {
 
   void receive_telegram_();
   void receive_encrypted_telegram_();
-  void reset_telegram_();
 
   // Read telegram
   size_t max_telegram_len_;

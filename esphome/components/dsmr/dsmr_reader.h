@@ -16,6 +16,12 @@ class DsmrReader {
 
   bool available();
   const char read();
+  size_t bytes_read();
+
+  // In a further iteration, I want to get rid of these.
+  // Only implementing them now to have an in-between refactoring step.
+  void pop_byte() { this->bytes_read_--; }
+  void set_bytes_read(size_t bytes) { this->bytes_read_ = bytes; }
 
   void reset();
   void set_header_found();
@@ -25,6 +31,8 @@ class DsmrReader {
 
  protected:
   DsmrInput *input_;
+
+  size_t bytes_read_{0};
 
   bool header_found_{false};
   bool footer_found_{false};

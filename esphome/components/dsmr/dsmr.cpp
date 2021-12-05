@@ -26,13 +26,6 @@ void Dsmr::loop() {
   }
 }
 
-void Dsmr::reset_telegram_() {
-  this->reader_->reset();
-  this->bytes_read_ = 0;
-  this->crypt_bytes_read_ = 0;
-  this->crypt_telegram_len_ = 0;
-}
-
 void Dsmr::receive_telegram_() {
   while (this->reader_->available()) {
     const char c = this->reader_->read();
@@ -40,15 +33,15 @@ void Dsmr::receive_telegram_() {
     // Find a new telegram header, i.e. forward slash.
     if (c == '/') {
       ESP_LOGV(TAG, "Header of telegram found");
-      this->reset_telegram_();
+      this->reader_->reset();
       this->reader_->set_header_found();
     }
     if (!this->reader_->header_found())
       continue;
 
     // Check for buffer overflow.
-    if (this->bytes_read_ >= this->max_telegram_len_) {
-      this->reset_telegram_();
+    if (this->reader_->bytes_read() >= this->max_telegram_len_) {
+      this->reader_->reset();
       ESP_LOGE(TAG, "Error: telegram larger than buffer (%d bytes)", this->max_telegram_len_);
       return;
     }
@@ -58,9 +51,9 @@ void Dsmr::receive_telegram_() {
     // proper parsing, remove these new line characters.
     if (c == '(') {
       while (true) {
-        auto previous_char = this->telegram_[this->bytes_read_ - 1];
+        auto previous_char = this->telegram_[this->reader_->bytes_read() - 1];
         if (previous_char == '\n' || previous_char == '\r') {
-          this->bytes_read_--;
+          this->reader_->pop_byte();
         } else {
           break;
         }
@@ -68,8 +61,7 @@ void Dsmr::receive_telegram_() {
     }
 
     // Store the byte in the buffer.
-    this->telegram_[this->bytes_read_] = c;
-    this->bytes_read_++;
+    this->telegram_[this->reader_->bytes_read()] = c;
 
     // Check for a footer, i.e. exlamation mark, followed by a hex checksum.
     if (c == '!') {
@@ -81,7 +73,7 @@ void Dsmr::receive_telegram_() {
     if (this->reader_->footer_found() && c == '\n') {
       // Parse the telegram and publish sensor values.
       this->parse_telegram();
-      this->reset_telegram_();
+      this->reader_->reset();
       return;
     }
   }
@@ -97,30 +89,30 @@ void Dsmr::receive_encrypted_telegram_() {
         continue;
       }
       ESP_LOGV(TAG, "Start byte 0xDB of encrypted telegram found");
-      this->reset_telegram_();
+      this->reader_->reset();
       this->reader_->set_header_found();
+      this->crypt_telegram_len_ = 0;
     }
 
     // Check for buffer overflow.
-    if (this->crypt_bytes_read_ >= this->max_telegram_len_) {
-      this->reset_telegram_();
+    if (this->reader_->bytes_read() >= this->max_telegram_len_) {
+      this->reader_->reset();
       ESP_LOGE(TAG, "Error: encrypted telegram larger than buffer (%d bytes)", this->max_telegram_len_);
       return;
     }
 
     // Store the byte in the buffer.
-    this->crypt_telegram_[this->crypt_bytes_read_] = c;
-    this->crypt_bytes_read_++;
+    this->crypt_telegram_[this->reader_->bytes_read()] = c;
 
     // Read the length of the incoming encrypted telegram.
-    if (this->crypt_telegram_len_ == 0 && this->crypt_bytes_read_ > 20) {
+    if (this->crypt_telegram_len_ == 0 && this->reader_->bytes_read() > 20) {
       // Complete header + data bytes
       this->crypt_telegram_len_ = 13 + (this->crypt_telegram_[11] << 8 | this->crypt_telegram_[12]);
       ESP_LOGV(TAG, "Encrypted telegram length: %d bytes", this->crypt_telegram_len_);
     }
 
     // Check for the end of the encrypted telegram.
-    if (this->crypt_telegram_len_ == 0 || this->crypt_bytes_read_ != this->crypt_telegram_len_) {
+    if (this->crypt_telegram_len_ == 0 || this->reader_->bytes_read() != this->crypt_telegram_len_) {
       continue;
     }
     ESP_LOGV(TAG, "End of encrypted telegram found");
@@ -138,16 +130,16 @@ void Dsmr::receive_encrypted_telegram_() {
                        // the ciphertext start at byte 18
                        &this->crypt_telegram_[18],
                        // cipher size
-                       this->crypt_bytes_read_ - 17);
+                       this->reader_->bytes_read() - 17);
     delete gcmaes128;  // NOLINT(cppcoreguidelines-owning-memory)
 
-    this->bytes_read_ = strnlen(this->telegram_, this->max_telegram_len_);
-    ESP_LOGV(TAG, "Decrypted telegram size: %d bytes", this->bytes_read_);
+    this->reader_->set_bytes_read(strnlen(this->telegram_, this->max_telegram_len_));
+    ESP_LOGV(TAG, "Decrypted telegram size: %d bytes", this->reader_->bytes_read());
     ESP_LOGVV(TAG, "Decrypted telegram: %s", this->telegram_);
 
     // Parse the decrypted telegram and publish sensor values.
     this->parse_telegram();
-    this->reset_telegram_();
+    this->reader_->reset();
     return;
   }
 }
@@ -157,11 +149,11 @@ bool Dsmr::parse_telegram() {
   ESP_LOGV(TAG, "Trying to parse telegram");
   this->throttle_->wait_for_next();
   ::dsmr::ParseResult<void> res =
-      ::dsmr::P1Parser::parse(&data, this->telegram_, this->bytes_read_, false,
+      ::dsmr::P1Parser::parse(&data, this->telegram_, this->reader_->bytes_read(), false,
                               this->crc_check_);  // Parse telegram according to data definition. Ignore unknown values.
   if (res.err) {
     // Parsing error, show it
-    auto err_str = res.fullError(this->telegram_, this->telegram_ + this->bytes_read_);
+    auto err_str = res.fullError(this->telegram_, this->telegram_ + this->reader_->bytes_read());
     ESP_LOGE(TAG, "%s", err_str.c_str());
     return false;
   } else {
