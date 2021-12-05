@@ -26,65 +26,24 @@ void Dsmr::loop() {
   }
 }
 
-bool Dsmr::receive_timeout_reached_() { return millis() - this->last_read_time_ > this->receive_timeout_; }
-
-bool Dsmr::available_within_timeout_() {
-  // Data are available for reading on the UART bus?
-  // Then we can start reading right away.
-  if (this->input_->available()) {
-    this->last_read_time_ = millis();
-    return true;
-  }
-  // When we're not in the process of reading a telegram, then there is
-  // no need to actively wait for new data to come in.
-  if (!header_found_) {
-    return false;
-  }
-  // A telegram is being read. The smart meter might not deliver a telegram
-  // in one go, but instead send it in chunks with small pauses in between.
-  // When the UART RX buffer cannot hold a full telegram, then make sure
-  // that the UART read buffer does not overflow while other components
-  // perform their work in their loop. Do this by not returning control to
-  // the main loop, until the read timeout is reached.
-  if (!this->input_->can_buffer(this->max_telegram_len_)) {
-    while (!this->receive_timeout_reached_()) {
-      delay(5);
-      if (this->input_->available()) {
-        this->last_read_time_ = millis();
-        return true;
-      }
-    }
-  }
-  // No new data has come in during the read timeout? Then stop reading the
-  // telegram and start waiting for the next one to arrive.
-  if (this->receive_timeout_reached_()) {
-    ESP_LOGW(TAG, "Timeout while reading data for telegram");
-    this->reset_telegram_();
-  }
-
-  return false;
-}
-
 void Dsmr::reset_telegram_() {
-  this->header_found_ = false;
-  this->footer_found_ = false;
+  this->reader_->reset();
   this->bytes_read_ = 0;
   this->crypt_bytes_read_ = 0;
   this->crypt_telegram_len_ = 0;
-  this->last_read_time_ = 0;
 }
 
 void Dsmr::receive_telegram_() {
-  while (this->available_within_timeout_()) {
-    const char c = this->input_->read();
+  while (this->reader_->available()) {
+    const char c = this->reader_->read();
 
     // Find a new telegram header, i.e. forward slash.
     if (c == '/') {
       ESP_LOGV(TAG, "Header of telegram found");
       this->reset_telegram_();
-      this->header_found_ = true;
+      this->reader_->set_header_found();
     }
-    if (!this->header_found_)
+    if (!this->reader_->header_found())
       continue;
 
     // Check for buffer overflow.
@@ -115,11 +74,11 @@ void Dsmr::receive_telegram_() {
     // Check for a footer, i.e. exlamation mark, followed by a hex checksum.
     if (c == '!') {
       ESP_LOGV(TAG, "Footer of telegram found");
-      this->footer_found_ = true;
+      this->reader_->set_footer_found();
       continue;
     }
     // Check for the end of the hex checksum, i.e. a newline.
-    if (this->footer_found_ && c == '\n') {
+    if (this->reader_->footer_found() && c == '\n') {
       // Parse the telegram and publish sensor values.
       this->parse_telegram();
       this->reset_telegram_();
@@ -129,17 +88,17 @@ void Dsmr::receive_telegram_() {
 }
 
 void Dsmr::receive_encrypted_telegram_() {
-  while (this->available_within_timeout_()) {
-    const char c = this->input_->read();
+  while (this->reader_->available()) {
+    const char c = this->reader_->read();
 
     // Find a new telegram start byte.
-    if (!this->header_found_) {
+    if (!this->reader_->header_found()) {
       if ((uint8_t) c != 0xDB) {
         continue;
       }
       ESP_LOGV(TAG, "Start byte 0xDB of encrypted telegram found");
       this->reset_telegram_();
-      this->header_found_ = true;
+      this->reader_->set_header_found();
     }
 
     // Check for buffer overflow.
@@ -215,8 +174,8 @@ bool Dsmr::parse_telegram() {
 void Dsmr::dump_config() {
   ESP_LOGCONFIG(TAG, "DSMR:");
   ESP_LOGCONFIG(TAG, "  Max telegram length: %d", this->max_telegram_len_);
-  ESP_LOGCONFIG(TAG, "  Receive timeout: %.1fs", this->receive_timeout_ / 1e3f);
   this->throttle_->dump_throttle_config();
+  this->reader_->dump_reader_config();
 
 #define DSMR_LOG_SENSOR(s) LOG_SENSOR("  ", #s, this->s_##s##_);
   DSMR_SENSOR_LIST(DSMR_LOG_SENSOR, )

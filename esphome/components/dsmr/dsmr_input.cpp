@@ -3,8 +3,6 @@
 namespace esphome {
 namespace dsmr {
 
-static const char *const TAG = "dsmr";
-
 DsmrUARTInput::DsmrUARTInput(uart::UARTComponent *uart) {
   this->uart_ = new uart::UARTDevice(uart);
   this->buffer_size_ = uart->get_rx_buffer_size();

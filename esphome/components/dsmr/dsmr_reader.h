@@ -1,0 +1,48 @@
+#pragma once
+
+#include "dsmr_input.h"
+
+namespace esphome {
+namespace dsmr {
+
+class DsmrReader {
+ public:
+  explicit DsmrReader(DsmrInput *input);
+
+  void set_receive_timeout(uint32_t timeout) { this->receive_timeout_ = timeout; }
+  void set_max_telegram_length(size_t length) { this->max_telegram_len_ = length; }
+
+  void dump_reader_config();
+
+  bool available();
+  const char read();
+
+  void reset();
+  void set_header_found();
+  bool header_found();
+  void set_footer_found();
+  bool footer_found();
+
+ protected:
+  DsmrInput *input_;
+
+  bool header_found_{false};
+  bool footer_found_{false};
+
+  /// Wait for UART data to become available within the read timeout.
+  ///
+  /// The smart meter might provide data in chunks, causing available() to
+  /// return 0. When we're already reading a telegram, then we don't return
+  /// right away (to handle further data in an upcoming loop) but wait a
+  /// little while using this method to see if more data are incoming.
+  /// By not returning, we prevent other components from taking so much
+  /// time that the UART RX buffer overflows and bytes of the telegram get
+  /// lost in the process.
+  uint32_t receive_timeout_;
+  size_t max_telegram_len_;
+  bool receive_timeout_reached_();
+  uint32_t last_read_time_{0};
+};
+
+}  // namespace dsmr
+}  // namespace esphome
