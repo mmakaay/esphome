@@ -3,7 +3,7 @@
 namespace esphome {
 namespace dsmr {
 
-static const char *const TAG = "dsmr_input";
+static const char *const TAG = "dsmr";
 
 DsmrUARTInput::DsmrUARTInput(uart::UARTComponent *uart) {
   this->uart_ = new uart::UARTDevice(uart);

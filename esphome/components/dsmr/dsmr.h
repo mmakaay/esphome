@@ -14,6 +14,7 @@
 #include <dsmr/fields.h>
 
 #include "dsmr_input.h"
+#include "dsmr_throttle.h"
 
 namespace esphome {
 namespace dsmr {
@@ -49,7 +50,7 @@ using MyData = ::dsmr::ParsedData<DSMR_TEXT_SENSOR_LIST(DSMR_DATA_SENSOR, DSMR_C
 
 class Dsmr : public Component {
  public:
-  Dsmr(DsmrInput *input, bool crc_check) : input_(input), crc_check_(crc_check) {}
+  Dsmr(DsmrInput *input, DsmrThrottle *throttle, bool crc_check) : input_(input), throttle_(throttle), crc_check_(crc_check) {}
 
   void setup() override;
   void loop() override;
@@ -72,8 +73,6 @@ class Dsmr : public Component {
 
   void set_decryption_key(const std::string &decryption_key);
   void set_max_telegram_length(size_t length) { this->max_telegram_len_ = length; }
-  void set_request_pin(GPIOPin *request_pin) { this->request_pin_ = request_pin; }
-  void set_request_interval(uint32_t interval) { this->request_interval_ = interval; }
   void set_receive_timeout(uint32_t timeout) { this->receive_timeout_ = timeout; }
 
 // Sensor setters
@@ -91,6 +90,7 @@ class Dsmr : public Component {
   void reset_telegram_();
 
   DsmrInput *input_;
+  DsmrThrottle *throttle_;
 
   /// Wait for UART data to become available within the read timeout.
   ///
@@ -102,16 +102,6 @@ class Dsmr : public Component {
   /// time that the UART RX buffer overflows and bytes of the telegram get
   /// lost in the process.
   bool available_within_timeout_();
-
-  // Request telegram
-  uint32_t request_interval_;
-  bool request_interval_reached_();
-  GPIOPin *request_pin_{nullptr};
-  uint32_t last_request_time_{0};
-  bool requesting_data_{false};
-  bool ready_to_request_data_();
-  void start_requesting_data_();
-  void stop_requesting_data_();
 
   // Read telegram
   uint32_t receive_timeout_;

@@ -15,6 +15,13 @@ class DsmrInput {
 
   /// Check if the input can buffer the provided number of bytes.
   virtual bool can_buffer(size_t bytes) = 0;
+
+  /// Drain all input that is currently available.
+  void drain() {
+    while (available()) {
+      read();
+    }
+  }
 };
 
 class DsmrUARTInput : public DsmrInput {
