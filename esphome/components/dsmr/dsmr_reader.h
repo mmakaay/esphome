@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dsmr_input.h"
+#include "dsmr_telegram.h"
 
 namespace esphome {
 namespace dsmr {
@@ -10,7 +11,8 @@ class DsmrReader {
   explicit DsmrReader(DsmrInput *input);
 
   void set_receive_timeout(uint32_t timeout) { this->receive_timeout_ = timeout; }
-  void set_max_telegram_length(size_t length) { this->max_telegram_len_ = length; }
+  void set_telegram(DsmrTelegram *telegram) { this->telegram_ = telegram; }
+  void set_max_telegram_length(size_t length) { this->max_telegram_len_ = length; } // WEG
 
   void dump_reader_config();
 
@@ -31,11 +33,12 @@ class DsmrReader {
 
  protected:
   DsmrInput *input_;
+  DsmrTelegram *telegram_;
 
-  size_t bytes_read_{0};
+  size_t bytes_read_{0}; // WEG
 
-  bool header_found_{false};
-  bool footer_found_{false};
+  bool header_found_{false}; // WEG
+  bool footer_found_{false}; // WEG
 
   /// Wait for UART data to become available within the read timeout.
   ///

@@ -12,13 +12,12 @@ DsmrReader::DsmrReader(DsmrInput *input) : input_(input) {}
 
 void DsmrReader::dump_reader_config() {
   ESP_LOGCONFIG(TAG, "  Receive timeout: %.1fs", this->receive_timeout_ / 1e3f);
+  this->telegram_->log_telegram_config();
 }
 
 void DsmrReader::reset() {
-  this->bytes_read_ = 0;
-  this->last_receive_time_ = 0;
-  this->header_found_ = false;
-  this->footer_found_ = false;
+  this->last_receive_time_ = 0; // WEG ?
+  this->telegram_->reset();
 }
 
 void DsmrReader::set_header_found() {
