@@ -1,6 +1,5 @@
-#pragma once
-
 #include "esphome/core/log.h"
+#include "dsmr_telegram.h"
 
 namespace esphome {
 namespace dsmr {

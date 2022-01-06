@@ -22,8 +22,8 @@ class DsmrTelegram {
   size_t max_length_;
   std::vector<char> data_;
   size_t bytes_read_{0};
-  bool is_reading{false};
-  bool is_complete{false};
+  bool is_reading_{false};
+  bool is_complete_{false};
   void set_header_found_();
   void set_footer_found_();
 };
@@ -41,8 +41,8 @@ class DsmrPlainTextTelegram : public DsmrTelegram {
   void add(const char byte) override;
 
  protected:
-  PlainTextTelegramState state_{TGRAM_FIND_HEADER};
-}
+  PlainTextTelegramState state_{TELEGRAM_FIND_HEADER};
+};
 
 }  // namespace dsmr
 }  // namespace esphome

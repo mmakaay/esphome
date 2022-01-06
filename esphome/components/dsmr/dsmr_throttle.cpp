@@ -65,6 +65,10 @@ void DsmrThrottle::start_requesting_data_() {
 }
 
 void DsmrThrottle::wait_for_next() {
+  this->stop_requesting_data_();
+}
+
+void DsmrThrottle::stop_requesting_data_() {
   if (this->requesting_data_) {
     if (this->request_pin_ != nullptr) {
       ESP_LOGV(TAG, "Stop requesting data from P1 port");
