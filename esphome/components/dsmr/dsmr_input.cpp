@@ -3,14 +3,21 @@
 namespace esphome {
 namespace dsmr {
 
-static const char *const TAG = "dsmr_input";
+DsmrUARTInput::DsmrUARTInput(uart::UARTComponent *uart) {
+  this->uart_ = new uart::UARTDevice(uart);
+  this->buffer_size_ = uart->get_rx_buffer_size();
+}
 
 bool DsmrUARTInput::available() {
-  return uart_->available();
+  return this->uart_->available();
 }
 
 const char DsmrUARTInput::read() {
-  return uart_->read();
+  return this->uart_->read();
+}
+
+bool DsmrUARTInput::can_buffer(size_t bytes) {
+  return this->buffer_size_ >= bytes; 
 }
 
 }  // namespace dsmr

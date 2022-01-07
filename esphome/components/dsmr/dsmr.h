@@ -13,6 +13,9 @@
 #include <dsmr/parser.h>
 #include <dsmr/fields.h>
 
+#include "dsmr_throttle.h"
+#include "dsmr_reader.h"
+
 namespace esphome {
 namespace dsmr {
 
@@ -45,9 +48,9 @@ using namespace ::dsmr::fields;
 using MyData = ::dsmr::ParsedData<DSMR_TEXT_SENSOR_LIST(DSMR_DATA_SENSOR, DSMR_COMMA)
                                       DSMR_BOTH DSMR_SENSOR_LIST(DSMR_DATA_SENSOR, DSMR_COMMA)>;
 
-class Dsmr : public Component, public uart::UARTDevice {
+class Dsmr : public Component {
  public:
-  Dsmr(uart::UARTComponent *uart, bool crc_check) : uart::UARTDevice(uart), crc_check_(crc_check) {}
+  Dsmr(DsmrThrottle *throttle, DsmrReader *reader, bool crc_check) : throttle_(throttle), reader_(reader), crc_check_(crc_check) {}
 
   void setup() override;
   void loop() override;
@@ -70,9 +73,6 @@ class Dsmr : public Component, public uart::UARTDevice {
 
   void set_decryption_key(const std::string &decryption_key);
   void set_max_telegram_length(size_t length) { this->max_telegram_len_ = length; }
-  void set_request_pin(GPIOPin *request_pin) { this->request_pin_ = request_pin; }
-  void set_request_interval(uint32_t interval) { this->request_interval_ = interval; }
-  void set_receive_timeout(uint32_t timeout) { this->receive_timeout_ = timeout; }
 
 // Sensor setters
 #define DSMR_SET_SENSOR(s) \
@@ -84,43 +84,19 @@ class Dsmr : public Component, public uart::UARTDevice {
   DSMR_TEXT_SENSOR_LIST(DSMR_SET_TEXT_SENSOR, )
 
  protected:
+  DsmrThrottle *throttle_;
+  DsmrReader *reader_;
+
   void receive_telegram_();
   void receive_encrypted_telegram_();
-  void reset_telegram_();
-
-  /// Wait for UART data to become available within the read timeout.
-  ///
-  /// The smart meter might provide data in chunks, causing available() to
-  /// return 0. When we're already reading a telegram, then we don't return
-  /// right away (to handle further data in an upcoming loop) but wait a
-  /// little while using this method to see if more data are incoming.
-  /// By not returning, we prevent other components from taking so much
-  /// time that the UART RX buffer overflows and bytes of the telegram get
-  /// lost in the process.
-  bool available_within_timeout_();
-
-  // Request telegram
-  uint32_t request_interval_;
-  bool request_interval_reached_();
-  GPIOPin *request_pin_{nullptr};
-  uint32_t last_request_time_{0};
-  bool requesting_data_{false};
-  bool ready_to_request_data_();
-  void start_requesting_data_();
-  void stop_requesting_data_();
 
   // Read telegram
-  uint32_t receive_timeout_;
-  bool receive_timeout_reached_();
   size_t max_telegram_len_;
   char *telegram_{nullptr};
   int bytes_read_{0};
   uint8_t *crypt_telegram_{nullptr};
   size_t crypt_telegram_len_{0};
   int crypt_bytes_read_{0};
-  uint32_t last_read_time_{0};
-  bool header_found_{false};
-  bool footer_found_{false};
 
 // Sensor member pointers
 #define DSMR_DECLARE_SENSOR(s) sensor::Sensor *s_##s##_{nullptr};
