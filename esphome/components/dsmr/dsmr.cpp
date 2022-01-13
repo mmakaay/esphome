@@ -10,8 +10,6 @@
 namespace esphome {
 namespace dsmr {
 
-static const char *const TAG = "dsmr";
-
 void Dsmr::setup() {
   this->telegram_ = new char[this->max_telegram_len_];  // NOLINT
 }

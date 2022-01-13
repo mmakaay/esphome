@@ -1,9 +1,7 @@
 #include "esphome/core/log.h"
-
+#include "dsmr.h"
 #include "dsmr_input.h"
 #include "dsmr_throttle.h"
-
-static const char *const TAG = "dsmr";
 
 namespace esphome {
 namespace dsmr {

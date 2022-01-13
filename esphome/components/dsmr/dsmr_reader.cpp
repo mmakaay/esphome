@@ -1,18 +1,15 @@
 #include "esphome/core/log.h"
-
+#include "dsmr.h"
 #include "dsmr_input.h"
 #include "dsmr_reader.h"
 
 namespace esphome {
 namespace dsmr {
 
-static const char *const TAG = "dsmr";
-
 DsmrReader::DsmrReader(DsmrInput *input) : input_(input) {}
 
 void DsmrReader::dump_reader_config() {
   ESP_LOGCONFIG(TAG, "  Receive timeout: %.1fs", this->receive_timeout_ / 1e3f);
-  this->telegram_->log_telegram_config();
 }
 
 void DsmrReader::reset() {
