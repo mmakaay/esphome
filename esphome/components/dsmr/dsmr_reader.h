@@ -7,11 +7,25 @@ namespace esphome {
 namespace dsmr {
 
 class DsmrReader {
+ // DsmrReader reads data from the DsmrInput and passes it on to the
+ // DsmrTelegram, while keeping an eye on read timeouts.
  public:
-  explicit DsmrReader(DsmrInput *input);
+  explicit DsmrReader(DsmrInput *input, DsmrTelegram *telegram);
 
+  // Set the DsmrTelegram instance to use. TODO Do we really need this?
+  // The only reason so far for setting it, is when the encryption key for
+  // encrypted DSMR changes. But that can be handled by a set encryption key
+  // method on the instance. The only reason that would remain is when
+  // starting out with unencrypted DSMR and then setting the encryption key,
+  // but I'm not sure if that's a useful use case. Doesn't make sense to me.
+  void set_telegram(DsmrTelegram *telegram) { this->telegram_ = telegram; telegram->reset(); }
+
+  // Set the timeout on incoming data while reading a telegram. When no new
+  // data arrive within the given timeout, the device will consider the
+  // current telegram a loss and starts looking for the header of the next
+  // telegram.
   void set_receive_timeout(uint32_t timeout) { this->receive_timeout_ = timeout; }
-  void set_telegram(DsmrTelegram *telegram) { this->telegram_ = telegram; }
+
   void set_max_telegram_length(size_t length) { this->max_telegram_len_ = length; } // WEG
 
   void dump_reader_config();
@@ -40,15 +54,6 @@ class DsmrReader {
   bool header_found_{false}; // WEG
   bool footer_found_{false}; // WEG
 
-  /// Wait for UART data to become available within the read timeout.
-  ///
-  /// The smart meter might provide data in chunks, causing available() to
-  /// return 0. When we're already reading a telegram, then we don't return
-  /// right away (to handle further data in an upcoming loop) but wait a
-  /// little while using this method to see if more data are incoming.
-  /// By not returning, we prevent other components from taking so much
-  /// time that the UART RX buffer overflows and bytes of the telegram get
-  /// lost in the process.
   uint32_t receive_timeout_;
   size_t max_telegram_len_;
   bool receive_timeout_reached_();
