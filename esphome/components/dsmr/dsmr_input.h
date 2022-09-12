@@ -1,7 +1,5 @@
 #pragma once
 
-#include "esphome/components/uart/uart.h"
-
 namespace esphome {
 namespace dsmr {
 
@@ -24,19 +22,6 @@ class DsmrInput {
       read();
     }
   }
-};
-
-class DsmrUARTInput : public DsmrInput {
- // DsmrUARTInput implements the DsmrInput interface for a smart meter
- // that provides its data through a UART serial interface.
- public:
-  explicit DsmrUARTInput(uart::UARTComponent *uart);
-  bool available() override;
-  const char read() override;
-  bool can_buffer(size_t bytes) override;
- protected:
-  size_t buffer_size_;
-  uart::UARTDevice *uart_;
 };
 
 }  // namespace dsmr
